@@ -45,8 +45,13 @@
 #include <LibWeb/DOM/Range.h>
 #include <LibWeb/DOM/ShadowRoot.h>
 #include <LibWeb/DOM/StaticNodeList.h>
+#include <LibWeb/DOM/Text.h>
 #include <LibWeb/DOM/XMLDocument.h>
 #include <LibWeb/Editing/EditingHistory.h>
+#include <LibWeb/Geometry/DOMPoint.h>
+#include <LibWeb/Geometry/DOMQuad.h>
+#include <LibWeb/Geometry/DOMRectList.h>
+#include <LibWeb/Geometry/DOMRectReadOnly.h>
 #include <LibWeb/HTML/CustomElements/CustomElementReactionNames.h>
 #include <LibWeb/HTML/CustomElements/CustomElementRegistry.h>
 #include <LibWeb/HTML/FormAssociatedElement.h>
@@ -80,6 +85,7 @@
 #include <LibWeb/MathML/MathMLElement.h>
 #include <LibWeb/Namespace.h>
 #include <LibWeb/Page/Page.h>
+#include <LibWeb/Painting/InlinePaintable.h>
 #include <LibWeb/Painting/Paintable.h>
 #include <LibWeb/SVG/SVGElement.h>
 #include <LibWeb/SVG/SVGTitleElement.h>
@@ -2886,6 +2892,363 @@ GC::Ref<Node> Node::get_root_node(RootNodeComposed composed)
 GC::Ref<Node> Node::get_root_node(Bindings::GetRootNodeOptions const& options)
 {
     return get_root_node(options.composed ? RootNodeComposed::Yes : RootNodeComposed::No);
+}
+
+static GC::Ref<Node> node_from_geometry_node(GeometryNode const& geometry_node)
+{
+    return geometry_node.visit(
+        [](GC::Ref<Text> const& text) -> GC::Ref<Node> { return GC::Ref<Node> { *text }; },
+        [](GC::Ref<Element> const& element) -> GC::Ref<Node> { return GC::Ref<Node> { *element }; },
+        [](GC::Ref<Document> const& document) -> GC::Ref<Node> { return GC::Ref<Node> { *document }; });
+}
+
+static Bindings::DOMPointInit dom_point_init_from_coordinates(double x, double y, double z = 0, double w = 1)
+{
+    Bindings::DOMPointInit init {};
+    init.x = x;
+    init.y = y;
+    init.z = z;
+    init.w = w;
+    return init;
+}
+
+static GC::Ref<Geometry::DOMPoint> create_dom_point(CSSPixelPoint point)
+{
+    return Geometry::DOMPoint::create(point.x().to_double(), point.y().to_double(), 0, 1);
+}
+
+static Bindings::DOMQuadInit dom_quad_init_from_rect(double x, double y, double width, double height)
+{
+    return Bindings::DOMQuadInit {
+        .p1 = dom_point_init_from_coordinates(x, y),
+        .p2 = dom_point_init_from_coordinates(x + width, y),
+        .p3 = dom_point_init_from_coordinates(x + width, y + height),
+        .p4 = dom_point_init_from_coordinates(x, y + height),
+    };
+}
+
+static CSSPixelRect box_rect_relative_to_border_box(Painting::Paintable const& paintable_box, Bindings::CSSBoxType box)
+{
+    auto border_rect = paintable_box.absolute_border_box_rect();
+
+    switch (box) {
+    case Bindings::CSSBoxType::Border:
+        return { 0, 0, border_rect.width(), border_rect.height() };
+    case Bindings::CSSBoxType::Padding: {
+        auto padding_rect = paintable_box.absolute_padding_box_rect();
+        return {
+            padding_rect.x() - border_rect.x(),
+            padding_rect.y() - border_rect.y(),
+            padding_rect.width(),
+            padding_rect.height(),
+        };
+    }
+    case Bindings::CSSBoxType::Content: {
+        auto content_rect = paintable_box.absolute_rect();
+        return {
+            content_rect.x() - border_rect.x(),
+            content_rect.y() - border_rect.y(),
+            content_rect.width(),
+            content_rect.height(),
+        };
+    }
+    case Bindings::CSSBoxType::Margin: {
+        auto const& margin = paintable_box.box_model().margin;
+        return {
+            -margin.left,
+            -margin.top,
+            border_rect.width() + margin.left + margin.right,
+            border_rect.height() + margin.top + margin.bottom,
+        };
+    }
+    }
+    VERIFY_NOT_REACHED();
+}
+
+static CSSPixelRect box_rect_relative_to_border_box(Painting::InlinePaintable const& inline_paintable, Painting::InlineBoxPiece const& piece, Bindings::CSSBoxType box)
+{
+    auto absolute_piece_border_rect = inline_paintable.absolute_piece_border_box_rect(piece);
+    auto absolute_border_rect = inline_paintable.absolute_border_box_rect();
+    CSSPixelRect piece_border_rect {
+        absolute_piece_border_rect.x() - absolute_border_rect.x(),
+        absolute_piece_border_rect.y() - absolute_border_rect.y(),
+        absolute_piece_border_rect.width(),
+        absolute_piece_border_rect.height(),
+    };
+
+    switch (box) {
+    case Bindings::CSSBoxType::Border:
+        return piece_border_rect;
+    case Bindings::CSSBoxType::Padding:
+        return inline_paintable.piece_padding_box_rect(piece, piece_border_rect);
+    case Bindings::CSSBoxType::Content:
+        return inline_paintable.piece_content_box_rect(piece, piece_border_rect);
+    case Bindings::CSSBoxType::Margin: {
+        using Edge = Painting::InlineBoxPiece::Edge;
+        auto const& margin = inline_paintable.box_model().margin;
+        auto margin_left = piece.has_edge(Edge::Left) ? margin.left : 0;
+        auto margin_top = piece.has_edge(Edge::Top) ? margin.top : 0;
+        auto margin_right = piece.has_edge(Edge::Right) ? margin.right : 0;
+        auto margin_bottom = piece.has_edge(Edge::Bottom) ? margin.bottom : 0;
+        return {
+            piece_border_rect.x() - margin_left,
+            piece_border_rect.y() - margin_top,
+            piece_border_rect.width() + margin_left + margin_right,
+            piece_border_rect.height() + margin_top + margin_bottom,
+        };
+    }
+    }
+    VERIFY_NOT_REACHED();
+}
+
+static RefPtr<Painting::Paintable const> principal_box_for_geometry_node(Node const& node)
+{
+    if (is<Document>(node))
+        return nullptr;
+
+    // The spec's "get the complete transform" algorithm walks from Text to its parent element.
+    if (is<Text>(node)) {
+        auto parent = node.parent_element();
+        if (!parent)
+            return nullptr;
+        return parent->paintable_box();
+    }
+
+    return static_cast<Element const&>(node).paintable_box();
+}
+
+static WebIDL::ExceptionOr<void> ensure_geometry_nodes_are_usable(JS::Realm& realm, Node const& target, Node const& from)
+{
+    auto target_navigable = target.document().navigable();
+    auto from_navigable = from.document().navigable();
+    if (!target_navigable || !from_navigable)
+        return WebIDL::NotFoundError::create(realm, "Geometry node is not in a document with a viewport."_utf16);
+
+    if (&target.document() != &from.document())
+        return WebIDL::NotFoundError::create(realm, "Geometry node conversion across documents is not supported."_utf16);
+
+    return {};
+}
+
+static WebIDL::ExceptionOr<CSSPixelPoint> adjust_point_to_border_box(JS::Realm& realm, Node const& node, CSSPixelPoint point, Bindings::CSSBoxType box)
+{
+    // If node is a Document or a Text, return the adjusted point.
+    if (is<Document>(node) || is<Text>(node))
+        return point;
+
+    auto paintable_box = principal_box_for_geometry_node(node);
+    if (!paintable_box)
+        return WebIDL::NotFoundError::create(realm, "Geometry node does not have a CSS box."_utf16);
+
+    // Adjust so the point refers to the same physical point, but is measured from the top-left corner of the border
+    // box rather than the requested box.
+    return point.translated(box_rect_relative_to_border_box(*paintable_box, box).location());
+}
+
+static WebIDL::ExceptionOr<CSSPixelPoint> adjust_point_from_border_box(JS::Realm& realm, Node const& node, CSSPixelPoint point, Bindings::CSSBoxType box)
+{
+    // If node is a Document or a Text, return the adjusted point.
+    if (is<Document>(node) || is<Text>(node))
+        return point;
+
+    auto paintable_box = principal_box_for_geometry_node(node);
+    if (!paintable_box)
+        return WebIDL::NotFoundError::create(realm, "Geometry node does not have a CSS box."_utf16);
+
+    // Adjust so the point refers to the same physical point, but is measured from the top-left corner of the requested
+    // box rather than the border box.
+    return point - box_rect_relative_to_border_box(*paintable_box, box).location();
+}
+
+static CSSPixelPoint paintable_box_point_to_viewport(Painting::Paintable const& paintable_box, CSSPixelPoint point)
+{
+    auto absolute_point = point + paintable_box.absolute_border_box_rect().location();
+    return paintable_box.transform_point_to_viewport(absolute_point, Painting::AccumulatedVisualContextTree::IncludeVisualViewportTransform::No);
+}
+
+static WebIDL::ExceptionOr<CSSPixelPoint> border_box_point_to_viewport(JS::Realm& realm, Node const& node, CSSPixelPoint point)
+{
+    if (is<Document>(node))
+        return point;
+
+    auto paintable_box = principal_box_for_geometry_node(node);
+    if (!paintable_box)
+        return WebIDL::NotFoundError::create(realm, "Geometry node does not have a CSS box."_utf16);
+
+    return paintable_box_point_to_viewport(*paintable_box, point);
+}
+
+static WebIDL::ExceptionOr<CSSPixelPoint> viewport_point_to_border_box(JS::Realm& realm, Node const& node, CSSPixelPoint point)
+{
+    if (is<Document>(node))
+        return point;
+
+    auto paintable_box = principal_box_for_geometry_node(node);
+    if (!paintable_box)
+        return WebIDL::NotFoundError::create(realm, "Geometry node does not have a CSS box."_utf16);
+
+    auto absolute_point = paintable_box->transform_point_from_viewport(point, Painting::AccumulatedVisualContextTree::IncludeVisualViewportTransform::No).value_or({});
+    return absolute_point - paintable_box->absolute_border_box_rect().location();
+}
+
+static WebIDL::ExceptionOr<GC::Ref<Geometry::DOMPoint>> convert_point_from_node_to_node(JS::Realm& realm, Node& target, Bindings::DOMPointInit const& point, Node& from, Bindings::ConvertCoordinateOptions const& options)
+{
+    TRY(ensure_geometry_nodes_are_usable(realm, target, from));
+
+    target.document().update_layout(UpdateLayoutReason::GeometryUtils);
+    target.document().update_paint_and_hit_testing_properties_if_needed();
+
+    // Let adjustedPoint be the result of adjusting a point to the border box, given point, from, and options.fromBox.
+    auto adjusted_point = TRY(adjust_point_to_border_box(realm, from, CSSPixelPoint { point.x, point.y }, options.from_box));
+
+    // Transform adjustedPoint by fromTransformToViewport, then by the inverse of thisTransformToViewport.
+    auto viewport_point = TRY(border_box_point_to_viewport(realm, from, adjusted_point));
+    auto target_border_box_point = TRY(viewport_point_to_border_box(realm, target, viewport_point));
+
+    // Return the result of adjusting a point from the border box given adjustedPoint, node, and options.toBox.
+    return create_dom_point(TRY(adjust_point_from_border_box(realm, target, target_border_box_point, options.to_box)));
+}
+
+static WebIDL::ExceptionOr<GC::Ref<Geometry::DOMQuad>> convert_quad_from_node_to_node(JS::Realm& realm, Node& target, Bindings::DOMQuadInit const& quad, Node& from, Bindings::ConvertCoordinateOptions const& options)
+{
+    // Transform each point of the DOMQuad via convertPointFromNode.
+    auto p1 = TRY(convert_point_from_node_to_node(realm, target, quad.p1.value_or({}), from, options));
+    auto p2 = TRY(convert_point_from_node_to_node(realm, target, quad.p2.value_or({}), from, options));
+    auto p3 = TRY(convert_point_from_node_to_node(realm, target, quad.p3.value_or({}), from, options));
+    auto p4 = TRY(convert_point_from_node_to_node(realm, target, quad.p4.value_or({}), from, options));
+
+    return Geometry::DOMQuad::create(
+        dom_point_init_from_coordinates(p1->x(), p1->y()),
+        dom_point_init_from_coordinates(p2->x(), p2->y()),
+        dom_point_init_from_coordinates(p3->x(), p3->y()),
+        dom_point_init_from_coordinates(p4->x(), p4->y()));
+}
+
+static WebIDL::ExceptionOr<GC::Ref<Geometry::DOMPoint>> convert_paintable_box_point_to_node(JS::Realm& realm, Painting::Paintable const& paintable_box, CSSPixelPoint point, Node& target)
+{
+    if (&target.document() != &paintable_box.document())
+        return WebIDL::NotFoundError::create(realm, "Geometry node conversion across documents is not supported."_utf16);
+
+    auto viewport_point = paintable_box_point_to_viewport(paintable_box, point);
+    auto target_border_box_point = TRY(viewport_point_to_border_box(realm, target, viewport_point));
+    return create_dom_point(TRY(adjust_point_from_border_box(realm, target, target_border_box_point, Bindings::CSSBoxType::Border)));
+}
+
+static WebIDL::ExceptionOr<GC::Ref<Geometry::DOMQuad>> convert_paintable_box_rect_to_node(JS::Realm& realm, Painting::Paintable const& paintable_box, CSSPixelRect rect, Node& target)
+{
+    auto p1 = TRY(convert_paintable_box_point_to_node(realm, paintable_box, rect.location(), target));
+    auto p2 = TRY(convert_paintable_box_point_to_node(realm, paintable_box, { rect.right(), rect.y() }, target));
+    auto p3 = TRY(convert_paintable_box_point_to_node(realm, paintable_box, { rect.right(), rect.bottom() }, target));
+    auto p4 = TRY(convert_paintable_box_point_to_node(realm, paintable_box, { rect.x(), rect.bottom() }, target));
+
+    return Geometry::DOMQuad::create(
+        dom_point_init_from_coordinates(p1->x(), p1->y()),
+        dom_point_init_from_coordinates(p2->x(), p2->y()),
+        dom_point_init_from_coordinates(p3->x(), p3->y()),
+        dom_point_init_from_coordinates(p4->x(), p4->y()));
+}
+
+// https://drafts.csswg.org/cssom-view/#dom-geometryutils-getboxquads
+WebIDL::ExceptionOr<Vector<GC::Ref<Geometry::DOMQuad>>> Node::get_box_quads(Bindings::BoxQuadOptions const& options)
+{
+    Vector<GC::Ref<Geometry::DOMQuad>> result;
+    auto& node = *this;
+
+    // 1. Let node be this.
+    // 2-4. Let document be node's node document.
+    auto& document = node.document();
+    if (!document.navigable())
+        return result;
+
+    auto& realm = HTML::relevant_realm(node);
+
+    document.update_layout(UpdateLayoutReason::GeometryUtils);
+    document.update_paint_and_hit_testing_properties_if_needed();
+
+    // 5. If options.relativeTo is specified, let relativeTo be options.relativeTo. Otherwise, let relativeTo be document.
+    auto relative_to_node = options.relative_to.has_value()
+        ? node_from_geometry_node(*options.relative_to)
+        : GC::Ref<Node> { document };
+
+    // 6. Let result be an empty list of DOMQuad objects.
+    Bindings::ConvertCoordinateOptions convert_options {};
+
+    // 7. If node is a Document, append the layout viewport quad converted from document to relativeTo.
+    if (is<Document>(node)) {
+        auto viewport_size = document.viewport_rect().size();
+        auto quad_init = dom_quad_init_from_rect(0, 0, viewport_size.width().to_double(), viewport_size.height().to_double());
+        result.append(TRY(convert_quad_from_node_to_node(realm, *relative_to_node, quad_init, document, convert_options)));
+        return result;
+    }
+
+    // 8. Otherwise, if node is a Text, convert each Range.getClientRects() viewport rect from document to relativeTo.
+    // Note: For Document and Text nodes, all BoxQuadOptions/box values return the same geometry.
+    if (is<Text>(node)) {
+        auto range = Range::create(GC::Ref<Node> { node }, 0, GC::Ref<Node> { node }, node.length());
+        auto rects = range->get_client_rects();
+        for (u32 i = 0; i < rects->length(); ++i) {
+            auto const* rect = rects->item(i);
+            if (!rect)
+                continue;
+            auto quad_init = dom_quad_init_from_rect(rect->x(), rect->y(), rect->width(), rect->height());
+            result.append(TRY(convert_quad_from_node_to_node(realm, *relative_to_node, quad_init, document, convert_options)));
+        }
+        return result;
+    }
+
+    auto paintable_box = node.paintable_box();
+    if (!paintable_box)
+        return result;
+
+    // 9. Otherwise, for each box fragment of node, in content order, create a local rect for the requested box with
+    // the fragment's border edge at x = 0 and y = 0, convert it from node to relativeTo, and append it.
+    if (auto const* inline_paintable = as_if<Painting::InlinePaintable>(paintable_box.ptr())) {
+        Vector<CSSPixelRect> rects;
+        inline_paintable->for_each_piece([&](Painting::InlineBoxPiece const& piece) {
+            if (!piece.is_geometry_only_placeholder)
+                rects.append(box_rect_relative_to_border_box(*inline_paintable, piece, options.box));
+        });
+
+        // An inline element whose content is only interrupting blocks generates no line fragments, but per CSSOM
+        // we still report its (zero-sized) box instead of an empty list.
+        if (rects.is_empty())
+            rects.append(box_rect_relative_to_border_box(*inline_paintable, options.box));
+
+        for (auto const& rect : rects)
+            result.append(TRY(convert_paintable_box_rect_to_node(realm, *inline_paintable, rect, *relative_to_node)));
+    } else {
+        auto rect = box_rect_relative_to_border_box(*paintable_box, options.box);
+        result.append(TRY(convert_paintable_box_rect_to_node(realm, *paintable_box, rect, *relative_to_node)));
+    }
+
+    // Note: Points are flattened, p1 is the physical top-left corner, and non-invertible transforms produce
+    // implementation-defined coordinates.
+    return result;
+}
+
+// https://drafts.csswg.org/cssom-view/#the-geometryutils-interface
+WebIDL::ExceptionOr<GC::Ref<Geometry::DOMQuad>> Node::convert_quad_from_node(Bindings::DOMQuadInit const& quad, GeometryNode const& from, Bindings::ConvertCoordinateOptions const& options)
+{
+    return convert_quad_from_node_to_node(HTML::relevant_realm(*this), *this, quad, *node_from_geometry_node(from), options);
+}
+
+// https://drafts.csswg.org/cssom-view/#the-geometryutils-interface
+WebIDL::ExceptionOr<GC::Ref<Geometry::DOMQuad>> Node::convert_rect_from_node(GC::Ref<Geometry::DOMRectReadOnly> rect, GeometryNode const& from, Bindings::ConvertCoordinateOptions const& options)
+{
+    // Create a DOMQuad from the rect, then transform each point of the DOMQuad.
+    Bindings::DOMQuadInit quad {
+        .p1 = dom_point_init_from_coordinates(rect->x(), rect->y()),
+        .p2 = dom_point_init_from_coordinates(rect->x() + rect->width(), rect->y()),
+        .p3 = dom_point_init_from_coordinates(rect->x() + rect->width(), rect->y() + rect->height()),
+        .p4 = dom_point_init_from_coordinates(rect->x(), rect->y() + rect->height()),
+    };
+    return convert_quad_from_node_to_node(HTML::relevant_realm(*this), *this, quad, *node_from_geometry_node(from), options);
+}
+
+// https://drafts.csswg.org/cssom-view/#the-geometryutils-interface
+WebIDL::ExceptionOr<GC::Ref<Geometry::DOMPoint>> Node::convert_point_from_node(Bindings::DOMPointInit const& point, GeometryNode const& from, Bindings::ConvertCoordinateOptions const& options)
+{
+    return convert_point_from_node_to_node(HTML::relevant_realm(*this), *this, point, *node_from_geometry_node(from), options);
 }
 
 Utf16String Node::debug_description() const

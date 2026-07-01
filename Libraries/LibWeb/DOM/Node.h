@@ -15,7 +15,11 @@
 #include <AK/Utf16String.h>
 #include <AK/Utf16StringBuilder.h>
 #include <AK/Utf16View.h>
-#include <AK/Vector.h>
+#include <AK/Variant.h>
+#include <LibWeb/Bindings/DOMPointReadOnly.h>
+#include <LibWeb/Bindings/DOMQuad.h>
+#include <LibWeb/Bindings/GeometryUtils.h>
+#include <LibWeb/Bindings/Node.h>
 #include <LibWeb/CSS/InvalidationSet.h>
 #include <LibWeb/DOM/EventTarget.h>
 #include <LibWeb/DOM/FragmentSerializationMode.h>
@@ -31,6 +35,8 @@
 namespace Web::DOM {
 
 class Document;
+class Element;
+class Text;
 
 }
 
@@ -54,6 +60,8 @@ struct GetRootNodeOptions;
 }
 
 namespace Web::DOM {
+
+using GeometryNode = Variant<GC::Ref<Text>, GC::Ref<Element>, GC::Ref<Document>>;
 
 enum class NameOrDescription {
     Name,
@@ -457,6 +465,11 @@ public:
 
     GC::Ref<Node> get_root_node(RootNodeComposed = RootNodeComposed::No);
     GC::Ref<Node> get_root_node(Bindings::GetRootNodeOptions const&);
+
+    WebIDL::ExceptionOr<Vector<GC::Ref<Geometry::DOMQuad>>> get_box_quads(Bindings::BoxQuadOptions const&);
+    WebIDL::ExceptionOr<GC::Ref<Geometry::DOMQuad>> convert_quad_from_node(Bindings::DOMQuadInit const&, GeometryNode const&, Bindings::ConvertCoordinateOptions const&);
+    WebIDL::ExceptionOr<GC::Ref<Geometry::DOMQuad>> convert_rect_from_node(GC::Ref<Geometry::DOMRectReadOnly>, GeometryNode const&, Bindings::ConvertCoordinateOptions const&);
+    WebIDL::ExceptionOr<GC::Ref<Geometry::DOMPoint>> convert_point_from_node(Bindings::DOMPointInit const&, GeometryNode const&, Bindings::ConvertCoordinateOptions const&);
 
     bool is_uninteresting_whitespace_node() const;
 

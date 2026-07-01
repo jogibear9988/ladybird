@@ -2653,6 +2653,32 @@ Optional<CSSPixelPoint> Paintable::transform_point_to_local_for_descendants(CSSP
     return (*result / pixel_ratio).to_type<CSSPixels>();
 }
 
+CSSPixelPoint Paintable::transform_point_to_viewport(CSSPixelPoint point, AccumulatedVisualContextTree::IncludeVisualViewportTransform include_visual_viewport_transform) const
+{
+    auto viewport_paintable = document().paintable();
+    if (!viewport_paintable || !viewport_paintable->has_visual_context_tree())
+        return point;
+    auto pixel_ratio = static_cast<float>(document().page().client().device_pixels_per_css_pixel());
+    auto const& scroll_state = viewport_paintable->scroll_state_snapshot();
+    auto const& visual_context_tree = viewport_paintable->visual_context_tree();
+    auto result = visual_context_tree.transform_point_to_viewport(m_accumulated_visual_context_index, point.to_type<float>() * pixel_ratio, scroll_state, include_visual_viewport_transform);
+    return (result * (1.f / pixel_ratio)).to_type<CSSPixels>();
+}
+
+Optional<CSSPixelPoint> Paintable::transform_point_from_viewport(CSSPixelPoint point, AccumulatedVisualContextTree::IncludeVisualViewportTransform include_visual_viewport_transform) const
+{
+    auto viewport_paintable = document().paintable();
+    if (!viewport_paintable || !viewport_paintable->has_visual_context_tree())
+        return point;
+    auto pixel_ratio = static_cast<float>(document().page().client().device_pixels_per_css_pixel());
+    auto const& scroll_state = viewport_paintable->scroll_state_snapshot();
+    auto const& visual_context_tree = viewport_paintable->visual_context_tree();
+    auto result = visual_context_tree.transform_point_from_viewport(m_accumulated_visual_context_index, point.to_type<float>() * pixel_ratio, scroll_state, include_visual_viewport_transform);
+    if (!result.has_value())
+        return {};
+    return (*result * (1.f / pixel_ratio)).to_type<CSSPixels>();
+}
+
 CSSPixelRect Paintable::transform_rect_to_viewport(CSSPixelRect const& rect, AccumulatedVisualContextTree::IncludeVisualViewportTransform include_visual_viewport_transform) const
 {
     auto viewport_paintable = document().paintable();

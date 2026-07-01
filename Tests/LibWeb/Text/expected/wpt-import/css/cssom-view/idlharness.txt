@@ -2,8 +2,8 @@ Harness status: OK
 
 Found 400 tests
 
-343 Pass
-57 Fail
+395 Pass
+5 Fail
 Pass	idl_test setup
 Pass	idl_test validation
 Pass	Partial interface Window: original interface defined
@@ -191,14 +191,14 @@ Pass	Element interface: document.createElement("div") must inherit property "cli
 Pass	Element interface: document.createElement("div") must inherit property "clientWidth" with the proper type
 Pass	Element interface: document.createElement("div") must inherit property "clientHeight" with the proper type
 Pass	Element interface: document.createElement("div") must inherit property "currentCSSZoom" with the proper type
-Fail	Element interface: document.createElement("div") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
-Fail	Element interface: calling getBoxQuads(optional BoxQuadOptions) on document.createElement("div") with too few arguments must throw TypeError
-Fail	Element interface: document.createElement("div") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("div") with too few arguments must throw TypeError
-Fail	Element interface: document.createElement("div") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("div") with too few arguments must throw TypeError
-Fail	Element interface: document.createElement("div") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("div") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("div") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
+Pass	Element interface: calling getBoxQuads(optional BoxQuadOptions) on document.createElement("div") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("div") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("div") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("div") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("div") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("div") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("div") with too few arguments must throw TypeError
 Pass	HTMLImageElement interface: attribute x
 Pass	HTMLImageElement interface: attribute y
 Pass	HTMLImageElement interface: document.createElement("img") must inherit property "x" with the proper type
@@ -236,14 +236,14 @@ Pass	Element interface: document.createElement("img") must inherit property "cli
 Pass	Element interface: document.createElement("img") must inherit property "clientWidth" with the proper type
 Pass	Element interface: document.createElement("img") must inherit property "clientHeight" with the proper type
 Pass	Element interface: document.createElement("img") must inherit property "currentCSSZoom" with the proper type
-Fail	Element interface: document.createElement("img") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
-Fail	Element interface: calling getBoxQuads(optional BoxQuadOptions) on document.createElement("img") with too few arguments must throw TypeError
-Fail	Element interface: document.createElement("img") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("img") with too few arguments must throw TypeError
-Fail	Element interface: document.createElement("img") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("img") with too few arguments must throw TypeError
-Fail	Element interface: document.createElement("img") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("img") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("img") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
+Pass	Element interface: calling getBoxQuads(optional BoxQuadOptions) on document.createElement("img") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("img") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("img") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("img") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("img") with too few arguments must throw TypeError
+Pass	Element interface: document.createElement("img") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElement("img") with too few arguments must throw TypeError
 Pass	Window interface: operation matchMedia(CSSOMString)
 Pass	Window interface: attribute screen
 Pass	Window interface: attribute visualViewport
@@ -311,10 +311,10 @@ Pass	Document interface: operation elementFromPoint(double, double)
 Pass	Document interface: operation elementsFromPoint(double, double)
 Pass	Document interface: operation caretPositionFromPoint(double, double, optional CaretPositionFromPointOptions)
 Pass	Document interface: attribute scrollingElement
-Fail	Document interface: operation getBoxQuads(optional BoxQuadOptions)
-Fail	Document interface: operation convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)
-Fail	Document interface: operation convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)
-Fail	Document interface: operation convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Document interface: operation getBoxQuads(optional BoxQuadOptions)
+Pass	Document interface: operation convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Document interface: operation convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Document interface: operation convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)
 Pass	Document interface: document must inherit property "elementFromPoint(double, double)" with the proper type
 Pass	Document interface: calling elementFromPoint(double, double) on document with too few arguments must throw TypeError
 Pass	Document interface: document must inherit property "elementsFromPoint(double, double)" with the proper type
@@ -322,14 +322,14 @@ Pass	Document interface: calling elementsFromPoint(double, double) on document w
 Pass	Document interface: document must inherit property "caretPositionFromPoint(double, double, optional CaretPositionFromPointOptions)" with the proper type
 Pass	Document interface: calling caretPositionFromPoint(double, double, optional CaretPositionFromPointOptions) on document with too few arguments must throw TypeError
 Pass	Document interface: document must inherit property "scrollingElement" with the proper type
-Fail	Document interface: document must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
-Fail	Document interface: calling getBoxQuads(optional BoxQuadOptions) on document with too few arguments must throw TypeError
-Fail	Document interface: document must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Document interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document with too few arguments must throw TypeError
-Fail	Document interface: document must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Document interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document with too few arguments must throw TypeError
-Fail	Document interface: document must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Document interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document with too few arguments must throw TypeError
+Pass	Document interface: document must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
+Pass	Document interface: calling getBoxQuads(optional BoxQuadOptions) on document with too few arguments must throw TypeError
+Pass	Document interface: document must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Document interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document with too few arguments must throw TypeError
+Pass	Document interface: document must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Document interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document with too few arguments must throw TypeError
+Pass	Document interface: document must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Document interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document with too few arguments must throw TypeError
 Pass	Element interface: operation getClientRects()
 Pass	Element interface: operation getBoundingClientRect()
 Pass	Element interface: operation checkVisibility(optional CheckVisibilityOptions)
@@ -349,10 +349,10 @@ Pass	Element interface: attribute clientLeft
 Pass	Element interface: attribute clientWidth
 Pass	Element interface: attribute clientHeight
 Pass	Element interface: attribute currentCSSZoom
-Fail	Element interface: operation getBoxQuads(optional BoxQuadOptions)
-Fail	Element interface: operation convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)
-Fail	Element interface: operation convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)
-Fail	Element interface: operation convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Element interface: operation getBoxQuads(optional BoxQuadOptions)
+Pass	Element interface: operation convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Element interface: operation convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Element interface: operation convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)
 Pass	Element interface: document.createElementNS("x", "y") must inherit property "getClientRects()" with the proper type
 Pass	Element interface: document.createElementNS("x", "y") must inherit property "getBoundingClientRect()" with the proper type
 Pass	Element interface: document.createElementNS("x", "y") must inherit property "checkVisibility(optional CheckVisibilityOptions)" with the proper type
@@ -380,26 +380,26 @@ Pass	Element interface: document.createElementNS("x", "y") must inherit property
 Pass	Element interface: document.createElementNS("x", "y") must inherit property "clientWidth" with the proper type
 Pass	Element interface: document.createElementNS("x", "y") must inherit property "clientHeight" with the proper type
 Pass	Element interface: document.createElementNS("x", "y") must inherit property "currentCSSZoom" with the proper type
-Fail	Element interface: document.createElementNS("x", "y") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
-Fail	Element interface: calling getBoxQuads(optional BoxQuadOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
-Fail	Element interface: document.createElementNS("x", "y") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
-Fail	Element interface: document.createElementNS("x", "y") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
-Fail	Element interface: document.createElementNS("x", "y") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Element interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
-Fail	Text interface: operation getBoxQuads(optional BoxQuadOptions)
-Fail	Text interface: operation convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)
-Fail	Text interface: operation convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)
-Fail	Text interface: operation convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)
-Fail	Text interface: document.createTextNode("x") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
-Fail	Text interface: calling getBoxQuads(optional BoxQuadOptions) on document.createTextNode("x") with too few arguments must throw TypeError
-Fail	Text interface: document.createTextNode("x") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Text interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createTextNode("x") with too few arguments must throw TypeError
-Fail	Text interface: document.createTextNode("x") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Text interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createTextNode("x") with too few arguments must throw TypeError
-Fail	Text interface: document.createTextNode("x") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
-Fail	Text interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createTextNode("x") with too few arguments must throw TypeError
+Pass	Element interface: document.createElementNS("x", "y") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
+Pass	Element interface: calling getBoxQuads(optional BoxQuadOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
+Pass	Element interface: document.createElementNS("x", "y") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
+Pass	Element interface: document.createElementNS("x", "y") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
+Pass	Element interface: document.createElementNS("x", "y") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Element interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createElementNS("x", "y") with too few arguments must throw TypeError
+Pass	Text interface: operation getBoxQuads(optional BoxQuadOptions)
+Pass	Text interface: operation convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Text interface: operation convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Text interface: operation convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)
+Pass	Text interface: document.createTextNode("x") must inherit property "getBoxQuads(optional BoxQuadOptions)" with the proper type
+Pass	Text interface: calling getBoxQuads(optional BoxQuadOptions) on document.createTextNode("x") with too few arguments must throw TypeError
+Pass	Text interface: document.createTextNode("x") must inherit property "convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Text interface: calling convertQuadFromNode(DOMQuadInit, GeometryNode, optional ConvertCoordinateOptions) on document.createTextNode("x") with too few arguments must throw TypeError
+Pass	Text interface: document.createTextNode("x") must inherit property "convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Text interface: calling convertRectFromNode(DOMRectReadOnly, GeometryNode, optional ConvertCoordinateOptions) on document.createTextNode("x") with too few arguments must throw TypeError
+Pass	Text interface: document.createTextNode("x") must inherit property "convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions)" with the proper type
+Pass	Text interface: calling convertPointFromNode(DOMPointInit, GeometryNode, optional ConvertCoordinateOptions) on document.createTextNode("x") with too few arguments must throw TypeError
 Pass	Range interface: operation getClientRects()
 Pass	Range interface: operation getBoundingClientRect()
 Pass	Range interface: new Range() must inherit property "getClientRects()" with the proper type

@@ -1,0 +1,11 @@
+Harness status: OK
+
+Found 6 tests
+
+6 Pass
+Pass	Block layout border box is expected width.
+Pass	Block layout margin box is expected width.
+Pass	Flex layout border box is expected width.
+Pass	Flex layout margin box is expected width.
+Pass	Flex layout border box is expected height.
+Pass	Flex layout margin box is expected height.

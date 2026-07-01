@@ -1146,6 +1146,99 @@ Gfx::FloatPoint AccumulatedVisualContextTree::inverse_transform_point(VisualCont
     return point;
 }
 
+Gfx::FloatPoint AccumulatedVisualContextTree::transform_point_to_viewport(VisualContextIndex index, Gfx::FloatPoint const& source_point, ScrollStateSnapshot const& scroll_state, IncludeVisualViewportTransform include_visual_viewport_transform) const
+{
+    auto point = source_point;
+    for (size_t i = index.value();; i = m_nodes[i].parent_index.value()) {
+        auto const& node = m_nodes[i];
+        if (i != VISUAL_VIEWPORT_NODE_INDEX.value() || include_visual_viewport_transform == IncludeVisualViewportTransform::Yes) {
+            node.data.visit(
+                [&](TransformData const& transform) {
+                    auto affine = Gfx::extract_2d_affine_transform(transform.matrix);
+                    auto offset_point = point - transform.origin;
+                    point = affine.map(offset_point) + transform.origin;
+                },
+                [&](PerspectiveData const& perspective) {
+                    auto affine = Gfx::extract_2d_affine_transform(perspective.matrix);
+                    point = affine.map(point);
+                },
+                [&](ScrollData const&) {
+                    point.translate_by(scroll_state.device_offset_for_index(VisualContextIndex { i }));
+                },
+                [&](ScrollCompensation const& compensation) {
+                    auto offset = scroll_state.device_offset_for_index(compensation.scroll_node_index);
+                    point.translate_by(-offset);
+                },
+                [&](AnchorScrollShift const& shift) {
+                    point.translate_by(shift.masked_offset(scroll_state));
+                },
+                [&](BackfaceVisibilityData const&) {},
+                [&](ClipData const&) { /* clips don't affect point coordinates */ },
+                [&](ClipPathData const&) { /* clip paths don't affect point coordinates */ },
+                [&](EffectsData const&) { /* effects don't affect coordinate transforms */ },
+                [&](MaskData const&) {});
+        }
+        if (i == VISUAL_VIEWPORT_NODE_INDEX.value())
+            break;
+    }
+
+    return point;
+}
+
+Optional<Gfx::FloatPoint> AccumulatedVisualContextTree::transform_point_from_viewport(VisualContextIndex index, Gfx::FloatPoint const& viewport_point, ScrollStateSnapshot const& scroll_state, IncludeVisualViewportTransform include_visual_viewport_transform) const
+{
+    auto chain = build_ancestor_chain(index);
+
+    auto point = viewport_point;
+    for (size_t i = chain.size(); i > 0; --i) {
+        auto node_index = chain[i - 1];
+        auto const& node = m_nodes[node_index];
+        if (node_index != VISUAL_VIEWPORT_NODE_INDEX.value() || include_visual_viewport_transform == IncludeVisualViewportTransform::Yes) {
+            auto result = node.data.visit(
+                [&](PerspectiveData const& perspective) -> Optional<Gfx::FloatPoint> {
+                    auto affine = Gfx::extract_2d_affine_transform(perspective.matrix);
+                    auto inverse = affine.inverse();
+                    if (!inverse.has_value())
+                        return {};
+                    point = inverse->map(point);
+                    return point;
+                },
+                [&](ScrollData const&) -> Optional<Gfx::FloatPoint> {
+                    point.translate_by(-scroll_state.device_offset_for_index(VisualContextIndex { node_index }));
+                    return point;
+                },
+                [&](TransformData const& transform) -> Optional<Gfx::FloatPoint> {
+                    auto affine = Gfx::extract_2d_affine_transform(transform.matrix);
+                    auto inverse = affine.inverse();
+                    if (!inverse.has_value())
+                        return {};
+
+                    auto offset_point = point - transform.origin;
+                    point = inverse->map(offset_point) + transform.origin;
+                    return point;
+                },
+                [&](ScrollCompensation const& compensation) -> Optional<Gfx::FloatPoint> {
+                    point.translate_by(scroll_state.device_offset_for_index(compensation.scroll_node_index));
+                    return point;
+                },
+                [&](AnchorScrollShift const& shift) -> Optional<Gfx::FloatPoint> {
+                    point.translate_by(-shift.masked_offset(scroll_state));
+                    return point;
+                },
+                [&](BackfaceVisibilityData const&) -> Optional<Gfx::FloatPoint> { return point; },
+                [&](ClipData const&) -> Optional<Gfx::FloatPoint> { return point; },
+                [&](ClipPathData const&) -> Optional<Gfx::FloatPoint> { return point; },
+                [&](EffectsData const&) -> Optional<Gfx::FloatPoint> { return point; },
+                [&](MaskData const&) -> Optional<Gfx::FloatPoint> { return point; });
+
+            if (!result.has_value())
+                return {};
+        }
+    }
+
+    return point;
+}
+
 Gfx::FloatRect AccumulatedVisualContextTree::transform_rect_to_viewport(VisualContextIndex index, Gfx::FloatRect const& source_rect, ScrollStateSnapshot const& scroll_state, IncludeVisualViewportTransform include_visual_viewport_transform) const
 {
     // A chain with three-dimensional transforms cannot be applied one two-dimensional projection at a time.
