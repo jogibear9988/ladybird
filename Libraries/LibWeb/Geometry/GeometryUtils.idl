@@ -1,0 +1,31 @@
+// https://drafts.csswg.org/cssom-view/#the-geometryutils-interface
+enum CSSBoxType { "margin", "border", "padding", "content" };
+
+typedef (Text or Element or Document) GeometryNode;
+
+// https://drafts.csswg.org/cssom-view/#dictdef-boxquadoptions
+dictionary BoxQuadOptions {
+    CSSBoxType box = "border";
+    GeometryNode relativeTo;
+};
+
+// https://drafts.csswg.org/cssom-view/#dictdef-convertcoordinateoptions
+dictionary ConvertCoordinateOptions {
+    CSSBoxType fromBox = "border";
+    CSSBoxType toBox = "border";
+};
+
+// https://drafts.csswg.org/cssom-view/#the-geometryutils-interface
+interface mixin GeometryUtils {
+    [NewObject] sequence<DOMQuad> getBoxQuads(optional BoxQuadOptions options = {});
+    [NewObject] DOMQuad convertQuadFromNode(DOMQuadInit quad, GeometryNode from, optional ConvertCoordinateOptions options = {});
+    [NewObject] DOMQuad convertRectFromNode(DOMRectReadOnly rect, GeometryNode from, optional ConvertCoordinateOptions options = {});
+    [NewObject] DOMPoint convertPointFromNode(DOMPointInit point, GeometryNode from, optional ConvertCoordinateOptions options = {});
+};
+
+Text includes GeometryUtils;
+Element includes GeometryUtils;
+Document includes GeometryUtils;
+
+// FIXME: CSSPseudoElement should include GeometryUtils and be part of GeometryNode once
+//        https://drafts.csswg.org/css-pseudo-4/#csspseudoelement is exposed.
