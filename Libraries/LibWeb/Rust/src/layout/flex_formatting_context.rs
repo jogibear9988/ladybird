@@ -2324,15 +2324,23 @@ impl<'pass> FlexFormattingContext<'pass> {
     }
 
     fn copy_dimensions_from_flex_items_to_boxes(&mut self) {
-        let reference = self.container_used().content_inline_size.get();
         for index in 0..self.flex_items.len() {
-            let style = self.style(self.flex_items[index].box_);
+            let margins = self.flex_items[index].margins;
+            let main_axis_is_horizontal = self.main_axis_is_horizontal();
             {
                 let used = self.item_used(index);
-                used.margin_left.set(style.margin_left().to_px(reference));
-                used.margin_right.set(style.margin_right().to_px(reference));
-                used.margin_top.set(style.margin_top().to_px(reference));
-                used.margin_bottom.set(style.margin_bottom().to_px(reference));
+                if main_axis_is_horizontal {
+                    used.margin_left.set(margins.main_before);
+                    used.margin_right.set(margins.main_after);
+                    used.margin_top.set(margins.cross_before);
+                    used.margin_bottom.set(margins.cross_after);
+                } else {
+                    used.margin_top.set(margins.main_before);
+                    used.margin_bottom.set(margins.main_after);
+                    used.margin_left.set(margins.cross_before);
+                    used.margin_right.set(margins.cross_after);
+                }
+                let style = self.style(self.flex_items[index].box_);
                 used.border_left.set(style.border_left_width());
                 used.border_right.set(style.border_right_width());
                 used.border_top.set(style.border_top_width());

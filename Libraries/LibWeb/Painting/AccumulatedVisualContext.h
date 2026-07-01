@@ -179,6 +179,8 @@ public:
 
     Optional<Gfx::FloatPoint> transform_point_for_hit_test(VisualContextIndex, Gfx::FloatPoint, ScrollStateSnapshot const&, ClipBehavior = ClipBehavior::Respect) const;
     Gfx::FloatPoint inverse_transform_point(VisualContextIndex, Gfx::FloatPoint) const;
+    Gfx::FloatPoint transform_point_to_viewport(VisualContextIndex, Gfx::FloatPoint const&, ScrollStateSnapshot const&, IncludeVisualViewportTransform = IncludeVisualViewportTransform::Yes) const;
+    Optional<Gfx::FloatPoint> transform_point_from_viewport(VisualContextIndex, Gfx::FloatPoint const&, ScrollStateSnapshot const&, IncludeVisualViewportTransform = IncludeVisualViewportTransform::Yes) const;
     Gfx::FloatRect transform_rect_to_viewport(VisualContextIndex, Gfx::FloatRect const&, ScrollStateSnapshot const&, IncludeVisualViewportTransform = IncludeVisualViewportTransform::Yes) const;
     Gfx::FloatMatrix4x4 accumulated_matrix(VisualContextIndex, ScrollStateSnapshot const&, IncludeVisualViewportTransform) const;
     Gfx::FloatSize accumulated_2d_scale(VisualContextIndex, ScrollStateSnapshot const&, IncludeVisualViewportTransform) const;

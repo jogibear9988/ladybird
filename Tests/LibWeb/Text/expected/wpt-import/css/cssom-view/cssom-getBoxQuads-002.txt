@@ -1,0 +1,6 @@
+Harness status: OK
+
+Found 1 tests
+
+1 Pass
+Pass	CSSOM View - getBoxQuads() returns consistent box for SVG test
