@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<script src="../include.js"></script>
+<style>
+    #captor, #other {
+        position: absolute;
+        top: 20px;
+        width: 80px;
+        height: 80px;
+    }
+
+    #captor {
+        left: 20px;
+    }
+
+    #other {
+        left: 140px;
+    }
+</style>
+<div id="captor"></div>
+<div id="other"></div>
+<script>
+    test(() => {
+        const log = [];
+        let lastPointerId = null;
+        let releaseOnMove = false;
+
+        captor.addEventListener("pointerdown", event => {
+            log.push(`down:${event.currentTarget.id}`);
+            log.push(`has-before-set:${captor.hasPointerCapture(event.pointerId)}`);
+            captor.setPointerCapture(event.pointerId);
+            log.push(`has-after-set:${captor.hasPointerCapture(event.pointerId)}`);
+            lastPointerId = event.pointerId;
+        });
+        captor.addEventListener("gotpointercapture", event => {
+            log.push(`got:${event.currentTarget.id}`);
+        });
+        captor.addEventListener("lostpointercapture", event => {
+            log.push(`lost:${event.currentTarget.id}`);
+        });
+        captor.addEventListener("pointermove", event => {
+            log.push(`move:${event.currentTarget.id}`);
+            if (releaseOnMove) {
+                captor.releasePointerCapture(event.pointerId);
+                log.push("release-called");
+                releaseOnMove = false;
+            }
+        });
+        captor.addEventListener("pointerup", event => {
+            log.push(`up:${event.currentTarget.id}`);
+        });
+        other.addEventListener("pointermove", event => {
+            log.push(`move:${event.currentTarget.id}`);
+        });
+        other.addEventListener("pointerup", event => {
+            log.push(`up:${event.currentTarget.id}`);
+        });
+
+        internals.mouseDown(50, 50);
+        internals.mouseMove(170, 50);
+        internals.mouseUp(170, 50);
+
+        releaseOnMove = true;
+        internals.mouseDown(50, 50);
+        internals.mouseMove(170, 50);
+        internals.mouseMove(170, 50);
+        internals.mouseUp(170, 50);
+
+        try {
+            captor.setPointerCapture(lastPointerId);
+        } catch (exception) {
+            log.push(`inactive-set:${exception.name}`);
+        }
+
+        try {
+            captor.releasePointerCapture(lastPointerId);
+        } catch (exception) {
+            log.push(`inactive-release:${exception.name}`);
+        }
+        log.push(`inactive-has:${captor.hasPointerCapture(lastPointerId)}`);
+
+        println(log.join("\n"));
+    });
+</script>
