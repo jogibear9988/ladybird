@@ -22,6 +22,7 @@ public:
 
     WebIDL::ExceptionOr<float> get_total_length();
     GC::Ref<Geometry::DOMPoint> get_point_at_length(float distance);
+    bool is_point_in_fill(Bindings::DOMPointInit const& point);
 
     GC::Ref<SVGAnimatedNumber> path_length();
 

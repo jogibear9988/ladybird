@@ -6,6 +6,7 @@
 
 #include <AK/ScopeGuard.h>
 #include <LibGC/Heap.h>
+#include <LibWeb/Bindings/DOMPointReadOnly.h>
 #include <LibWeb/CSS/CSSStyleProperties.h>
 #include <LibWeb/CSS/ElementBoxKind.h>
 #include <LibWeb/CSS/RustDeclarationBlock.h>
@@ -109,6 +110,62 @@ GC::Ref<Geometry::DOMPoint> SVGGeometryElement::get_point_at_length(float distan
 {
     (void)distance;
     return Geometry::DOMPoint::create(0, 0, 0, 0);
+}
+
+static Gfx::WindingRule to_gfx_winding_rule(CSS::FillRule fill_rule)
+{
+    switch (fill_rule) {
+    case CSS::FillRule::Nonzero:
+        return Gfx::WindingRule::Nonzero;
+    case CSS::FillRule::Evenodd:
+        return Gfx::WindingRule::EvenOdd;
+    default:
+        VERIFY_NOT_REACHED();
+    }
+}
+
+// https://svgwg.org/svg2-draft/types.html#__svg__SVGGeometryElement__isPointInFill
+bool SVGGeometryElement::is_point_in_fill(Bindings::DOMPointInit const& point)
+{
+    // Check whether the given point is within the fill shape of an element.
+
+    // NB: Update layout so that the viewport size is resolved correctly.
+    Layout::ForcedReadScope read { document() };
+    document().update_layout(DOM::UpdateLayoutReason::SVGPathLength);
+
+    auto viewport_size = viewport_size_for_percentage_resolution(read);
+
+    // NB: Update style for the element so that the correct computed values are used to generate the path - this is done
+    //     separately from the layout update above since it may have been skipped if the element was display: none or
+    //     disconnected.
+    document().update_style_for_element(*this);
+
+    auto contains_point = [&](CSS::ComputedValues const& computed_values) {
+        auto const* svg_values = static_cast<CSS::ComputedValues::InheritedSVGValues const*>(
+            computed_values.style_group_payload(CSS::StyleGroupIndex::InheritedSVGValues));
+        auto path = get_path({ viewport_size.width(), viewport_size.height() }, computed_values);
+        auto winding_rule = to_gfx_winding_rule(static_cast<CSS::FillRule>(svg_values->fill_rule));
+        return path.contains({ static_cast<float>(point.x), static_cast<float>(point.y) }, winding_rule);
+    };
+
+    if (auto computed_values = computed_style())
+        return contains_point(*computed_values);
+
+    auto const has_no_style_node = style_node_id() == CSS::StyleNodeID {};
+    auto& style_document = has_no_style_node ? HTML::relevant_window(*this).associated_document() : document();
+    auto& style_computer = style_document.style_computer();
+    Layout::ForcedReadScope style_read { style_document };
+    auto record = has_no_style_node
+        ? declared_only_style_record(style_read, style_computer, style_document, *this)
+        : CSS::StyleRecordID { style_computer.style_engine().answer_record_demand(style_read, style_node_id(), CSS::StyleEngine::RecordDemand::ElementRead).record.style_record };
+    ScopeGuard unpin_record = [&] {
+        if (has_no_style_node && !!record)
+            style_computer.unpin_style_record(record);
+    };
+    auto view = style_computer.computed_style_record_view(style_read, record);
+    if (!view)
+        return false;
+    return contains_point(*view);
 }
 
 GC::Ref<SVGAnimatedNumber> SVGGeometryElement::path_length()
