@@ -5,6 +5,7 @@
  */
 
 #include <LibGC/Heap.h>
+#include <LibWeb/Bindings/DOMPointReadOnly.h>
 #include <LibWeb/DOM/Document.h>
 #include <LibWeb/Layout/Box.h>
 #include <LibWeb/SVG/SVGGeometryElement.h>
@@ -53,6 +54,40 @@ GC::Ref<Geometry::DOMPoint> SVGGeometryElement::get_point_at_length(float distan
 {
     (void)distance;
     return Geometry::DOMPoint::create(0, 0, 0, 0);
+}
+
+static Gfx::WindingRule to_gfx_winding_rule(FillRule fill_rule)
+{
+    switch (fill_rule) {
+    case FillRule::Nonzero:
+        return Gfx::WindingRule::Nonzero;
+    case FillRule::Evenodd:
+        return Gfx::WindingRule::EvenOdd;
+    default:
+        VERIFY_NOT_REACHED();
+    }
+}
+
+// https://svgwg.org/svg2-draft/types.html#__svg__SVGGeometryElement__isPointInFill
+bool SVGGeometryElement::is_point_in_fill(Bindings::DOMPointInit const& point)
+{
+    // Check whether the given point is within the fill shape of an element.
+
+    // NB: Update layout so that the viewport size is resolved correctly.
+    document().update_layout(DOM::UpdateLayoutReason::SVGPathLength);
+
+    auto viewport_size = viewport_size_for_percentage_resolution();
+
+    // NB: Update style for the element so that the correct computed values are used to generate the path - this is done
+    //     separately from the layout update above since it may have been skipped if the element was display: none or
+    //     disconnected.
+    document().update_style_for_element(*this);
+
+    VERIFY(computed_style());
+
+    auto path = get_path({ viewport_size.width(), viewport_size.height() });
+    auto winding_rule = to_gfx_winding_rule(fill_rule().value_or(FillRule::Nonzero));
+    return path.contains({ static_cast<float>(point.x), static_cast<float>(point.y) }, winding_rule);
 }
 
 GC::Ref<SVGAnimatedNumber> SVGGeometryElement::path_length()

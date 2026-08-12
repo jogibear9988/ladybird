@@ -1,0 +1,6 @@
+isPointInFill exists: function
+rect contains center: true
+rect excludes outside point: false
+rect default point is outside: false
+evenodd contains outer area: true
+evenodd excludes inner hole: false
