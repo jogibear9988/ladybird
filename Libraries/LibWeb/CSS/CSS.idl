@@ -83,8 +83,6 @@ partial interface Window {
 
 // https://drafts.csswg.org/cssom-view/#extensions-to-the-document-interface
 partial interface Document {
-    Element? elementFromPoint(double x, double y);
-    sequence<Element> elementsFromPoint(double x, double y);
     CaretPosition? caretPositionFromPoint(double x, double y, optional CaretPositionFromPointOptions options = {});
     readonly attribute Element? scrollingElement;
 };
@@ -95,6 +93,10 @@ dictionary CaretPositionFromPointOptions {
 
 // https://drafts.csswg.org/cssom/#extensions-to-the-document-or-shadow-root-interface
 partial interface mixin DocumentOrShadowRoot {
+    // https://drafts.csswg.org/cssom-view/#extensions-to-the-documentorshadowroot-interface
+    Element? elementFromPoint(double x, double y);
+    sequence<Element> elementsFromPoint(double x, double y);
+
     [SameObject, ImplementedInBindings] readonly attribute StyleSheetList styleSheets;
     // FIXME: adoptedStyleSheets should be ObservableArray<CSSStyleSheet>.
     [ImplementedInBindings] attribute any adoptedStyleSheets;
