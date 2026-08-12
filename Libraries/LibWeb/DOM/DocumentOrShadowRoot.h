@@ -58,6 +58,84 @@ GC::Ptr<Element> calculate_active_element(T& self)
     return nullptr;
 }
 
+// https://drafts.csswg.org/cssom-view/#dom-document-elementfrompoint
+template<DocumentOrShadowRoot T>
+Element const* calculate_element_from_point(T& self, double x, double y)
+{
+    // 1. If either argument is negative, x is greater than the viewport width excluding the size of a rendered scroll
+    //    bar (if any), or y is greater than the viewport height excluding the size of a rendered scroll bar (if any), or
+    //    there is no viewport associated with the document, return null and terminate these steps.
+    auto& document = self.document();
+    auto viewport_rect = document.viewport_rect();
+    CSSPixelPoint position { x, y };
+    // FIXME: This should account for the size of the scroll bar.
+    if (x < 0 || y < 0 || position.x() > viewport_rect.width() || position.y() > viewport_rect.height())
+        return nullptr;
+
+    // Ensure the layout tree exists prior to hit testing.
+    document.update_layout(UpdateLayoutReason::DocumentElementFromPoint);
+
+    // 2. If there is a box in the viewport that would be a target for hit testing at coordinates x,y, when applying the transforms
+    //    that apply to the descendants of the viewport, return the associated element and terminate these steps.
+    GC::Ptr<Element> hit_element;
+    (void)document.hit_test_all(position, [&](auto result) {
+        if (auto* retargeted_node = as_if<Element>(retarget(result.dom_node(), &self))) {
+            hit_element = retargeted_node;
+            return TraversalDecision::Break;
+        }
+        return TraversalDecision::Continue;
+    });
+    if (hit_element)
+        return hit_element.ptr();
+
+    // 3. If the document has a root element, return the root element and terminate these steps.
+    if (auto const* root_element = document.document_element())
+        return root_element;
+
+    // 4. Return null.
+    return nullptr;
+}
+
+// https://drafts.csswg.org/cssom-view/#dom-document-elementsfrompoint
+template<DocumentOrShadowRoot T>
+GC::RootVector<GC::Ref<Element>> calculate_elements_from_point(T& self, double x, double y)
+{
+    // 1. Let sequence be a new empty sequence.
+    GC::RootVector<GC::Ref<Element>> sequence;
+
+    // 2. If either argument is negative, x is greater than the viewport width excluding the size of a rendered scroll bar (if any),
+    //    or y is greater than the viewport height excluding the size of a rendered scroll bar (if any),
+    //    or there is no viewport associated with the document, return sequence and terminate these steps.
+    auto& document = self.document();
+    auto viewport_rect = document.viewport_rect();
+    CSSPixelPoint position { x, y };
+    // FIXME: This should account for the size of the scroll bar.
+    if (x < 0 || y < 0 || position.x() > viewport_rect.width() || position.y() > viewport_rect.height())
+        return sequence;
+
+    // Ensure the layout tree exists prior to hit testing.
+    document.update_layout(UpdateLayoutReason::DocumentElementsFromPoint);
+
+    // 3. For each box in the viewport, in paint order, starting with the topmost box, that would be a target for
+    //    hit testing at coordinates x,y even if nothing would be overlapping it, when applying the transforms that
+    //    apply to the descendants of the viewport, append the associated element to sequence.
+    (void)document.hit_test_all(position, [&](auto result) {
+        if (auto* element = as_if<Element>(retarget(result.dom_node(), &self))) {
+            if (!sequence.contains_slow(GC::Ref { *element }))
+                sequence.append(*element);
+        }
+        return TraversalDecision::Continue;
+    });
+
+    // 4. If the document has a root element, and the last item in sequence is not the root element,
+    //    append the root element to sequence.
+    if (auto* root_element = document.document_element(); root_element && (sequence.is_empty() || (sequence.last().ptr() != root_element)))
+        sequence.append(*root_element);
+
+    // 5. Return sequence.
+    return sequence;
+}
+
 // https://drafts.csswg.org/web-animations-1/#dom-documentorshadowroot-getanimations
 template<DocumentOrShadowRoot T>
 WebIDL::ExceptionOr<Vector<GC::Ref<Animations::Animation>>> calculate_get_animations(T& self)

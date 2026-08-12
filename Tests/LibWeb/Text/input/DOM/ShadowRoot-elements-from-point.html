@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<script src="../include.js"></script>
+<style>
+    body {
+        margin: 0;
+    }
+
+    #host {
+        position: absolute;
+        left: 20px;
+        top: 20px;
+        width: 100px;
+        height: 100px;
+    }
+</style>
+<div id="host"></div>
+<script>
+    test(() => {
+        const host = document.getElementById("host");
+        const shadowRoot = host.attachShadow({ mode: "open" });
+        shadowRoot.innerHTML = `
+            <style>
+                #target {
+                    display: block;
+                    width: 100px;
+                    height: 100px;
+                    background: green;
+                }
+            </style>
+            <div id="target"></div>
+        `;
+
+        const rect = host.getBoundingClientRect();
+        const x = rect.left + 10;
+        const y = rect.top + 10;
+        const target = shadowRoot.getElementById("target");
+
+        println(`elementFromPoint exists: ${typeof shadowRoot.elementFromPoint}`);
+        println(`elementsFromPoint exists: ${typeof shadowRoot.elementsFromPoint}`);
+        println(`document.elementFromPoint retargets to host: ${document.elementFromPoint(x, y) === host}`);
+        println(`shadowRoot.elementFromPoint returns target: ${shadowRoot.elementFromPoint(x, y) === target}`);
+        println(`shadowRoot.elementsFromPoint starts with target: ${shadowRoot.elementsFromPoint(x, y)[0] === target}`);
+    });
+</script>

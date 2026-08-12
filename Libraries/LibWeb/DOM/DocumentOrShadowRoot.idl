@@ -5,6 +5,10 @@ interface mixin DocumentOrShadowRoot {
     // https://html.spec.whatwg.org/multipage/interaction.html#dom-documentorshadowroot-activeelement
     readonly attribute Element? activeElement;
 
+    // https://drafts.csswg.org/cssom-view/#extensions-to-the-documentorshadowroot-interface
+    Element? elementFromPoint(double x, double y);
+    sequence<Element> elementsFromPoint(double x, double y);
+
     // https://w3c.github.io/csswg-drafts/cssom/#extensions-to-the-document-or-shadow-root-interface
     [SameObject, ImplementedInBindings] readonly attribute StyleSheetList styleSheets;
     [ImplementedInBindings] attribute any adoptedStyleSheets;

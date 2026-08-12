@@ -1,0 +1,5 @@
+elementFromPoint exists: function
+elementsFromPoint exists: function
+document.elementFromPoint retargets to host: true
+shadowRoot.elementFromPoint returns target: true
+shadowRoot.elementsFromPoint starts with target: true
