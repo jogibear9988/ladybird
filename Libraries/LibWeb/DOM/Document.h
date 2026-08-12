@@ -63,6 +63,7 @@
 #include <LibWeb/ResizeObserver/ResizeObserver.h>
 #include <LibWeb/SVG/SVGUseElement.h>
 #include <LibWeb/WebIDL/ExceptionOr.h>
+#include <LibWeb/WebIDL/Types.h>
 #include <LibWeb/XPath/EvaluateResult.h>
 
 namespace Web::CSS {
@@ -1172,6 +1173,17 @@ public:
     void set_dialog_pointerdown_target(GC::Ptr<HTML::HTMLDialogElement> target) { m_dialog_pointerdown_target = target; }
     GC::Ptr<HTML::HTMLDialogElement> dialog_pointerdown_target() { return m_dialog_pointerdown_target; }
 
+    void set_pointer_as_active(WebIDL::Long pointer_id);
+    void set_pointer_as_inactive(WebIDL::Long pointer_id);
+    WebIDL::ExceptionOr<void> set_pointer_capture(WebIDL::Long pointer_id, Element&);
+    WebIDL::ExceptionOr<void> release_pointer_capture(WebIDL::Long pointer_id, Element&);
+    bool has_pointer_capture(WebIDL::Long pointer_id, Element const&) const;
+    GC::Ptr<Element> pointer_capture_target_override(WebIDL::Long pointer_id) const;
+
+    using PointerCaptureEventDispatcher = Function<void(Element&, Utf16FlyString const&)>;
+    void process_pending_pointer_capture(WebIDL::Long pointer_id, PointerCaptureEventDispatcher const& dispatch_pointer_capture_event);
+    void implicitly_release_pointer_capture(WebIDL::Long pointer_id, PointerCaptureEventDispatcher const& dispatch_pointer_capture_event);
+
     size_t transition_generation() const { return m_transition_generation; }
     void begin_style_stabilization_epoch();
     void record_style_stabilization_pass();
@@ -1849,6 +1861,13 @@ private:
 
     Vector<GC::Ref<HTML::HTMLDialogElement>> m_open_dialogs_list;
     GC::Ptr<HTML::HTMLDialogElement> m_dialog_pointerdown_target;
+
+    struct PointerCaptureState {
+        bool is_active { false };
+        GC::Ptr<Element> pending_target_override;
+        GC::Ptr<Element> target_override;
+    };
+    HashMap<WebIDL::Long, PointerCaptureState> m_pointer_capture_states;
 
     // https://dom.spec.whatwg.org/#document-allow-declarative-shadow-roots
     HTML::HTMLParser::AllowDeclarativeShadowRoots m_allow_declarative_shadow_roots { HTML::HTMLParser::AllowDeclarativeShadowRoots::No };

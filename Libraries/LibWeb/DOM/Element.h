@@ -754,8 +754,8 @@ public:
     // https://drafts.csswg.org/css-view-transitions-1/#capture-the-image
     Optional<Gfx::DecodedImageFrame> capture_the_image();
 
-    void set_pointer_capture(WebIDL::Long pointer_id);
-    void release_pointer_capture(WebIDL::Long pointer_id);
+    WebIDL::ExceptionOr<void> set_pointer_capture(WebIDL::Long pointer_id);
+    WebIDL::ExceptionOr<void> release_pointer_capture(WebIDL::Long pointer_id);
     bool has_pointer_capture(WebIDL::Long pointer_id);
 
     virtual bool contributes_a_script_blocking_style_sheet() const { return false; }

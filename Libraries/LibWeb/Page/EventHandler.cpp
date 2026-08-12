@@ -3167,7 +3167,25 @@ EventHandler::PointerEventDispatchResult EventHandler::dispatch_a_pointer_event_
         }
         VERIFY_NOT_REACHED();
     }();
-    auto pointer_event = MUST(UIEvents::PointerEvent::create_from_platform_event(relevant_global_object, m_navigable->active_window_proxy(), pointer_event_name, screen_position, coordinates.page_offset, coordinates.viewport_position, coordinates.offset, movement, button, buttons, modifiers));
+    auto pointer_event = MUST(UIEvents::PointerEvent::create_from_platform_event(
+        relevant_global_object, m_navigable->active_window_proxy(), pointer_event_name, screen_position,
+        coordinates.page_offset, coordinates.viewport_position, coordinates.offset, movement, button, buttons, modifiers));
+    auto pointer_id = pointer_event->pointer_id();
+
+    Function<void(DOM::Element&, Utf16FlyString const&)> dispatch_pointer_capture_event = [&](DOM::Element& target, Utf16FlyString const& event_name) {
+        auto pointer_capture_event = MUST(UIEvents::PointerEvent::create_from_platform_event(
+            relevant_global_object, m_navigable->active_window_proxy(), event_name, screen_position,
+            coordinates.page_offset, coordinates.viewport_position, coordinates.offset, movement, button, buttons, modifiers));
+        pointer_capture_event->set_cancelable(false);
+        target.dispatch_event(pointer_capture_event);
+    };
+
+    if (type == PointerEventType::PointerDown)
+        document.set_pointer_as_active(pointer_id);
+
+    document.process_pending_pointer_capture(pointer_id, dispatch_pointer_capture_event);
+    if (auto pointer_capture_target = document.pointer_capture_target_override(pointer_id))
+        node = pointer_capture_target;
 
     // FIXME: 1. If the isPrimary property for the pointer event to be dispatched is false then dispatch the
     //           pointer event and terminate these steps.
@@ -3210,6 +3228,9 @@ EventHandler::PointerEventDispatchResult EventHandler::dispatch_a_pointer_event_
     // 3. Dispatch the pointer event.
     bool pointer_event_cancelled = !node->dispatch_event(pointer_event);
 
+    if (type == PointerEventType::PointerUp || type == PointerEventType::PointerCancel)
+        document.implicitly_release_pointer_capture(pointer_id, dispatch_pointer_capture_event);
+
     // 4. If the pointer event dispatched was pointerdown and event's canceled flag is set, then set the PREVENT MOUSE
     //    EVENT flag for this pointerType.
     if (type == PointerEventType::PointerDown && pointer_event_cancelled)
@@ -3242,8 +3263,10 @@ EventHandler::PointerEventDispatchResult EventHandler::dispatch_a_pointer_event_
 
     // 6. If the pointer event dispatched was pointerup or pointercancel, clear the PREVENT MOUSE EVENT flag for this
     //    pointerType.
-    if (type == PointerEventType::PointerUp || type == PointerEventType::PointerCancel)
+    if (type == PointerEventType::PointerUp || type == PointerEventType::PointerCancel) {
         m_prevent_mouse_event = false;
+        document.set_pointer_as_inactive(pointer_id);
+    }
 
     return run_default_activation_behavior ? PointerEventDispatchResult::RunDefaultActions : PointerEventDispatchResult::CancelledByPage;
 }

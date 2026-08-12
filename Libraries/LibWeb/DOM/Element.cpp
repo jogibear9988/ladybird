@@ -5862,23 +5862,19 @@ Optional<Gfx::DecodedImageFrame> Element::capture_the_image()
     return Gfx::DecodedImageFrame { *bitmap };
 }
 
-void Element::set_pointer_capture(WebIDL::Long pointer_id)
+WebIDL::ExceptionOr<void> Element::set_pointer_capture(WebIDL::Long pointer_id)
 {
-    (void)pointer_id;
-    dbgln("FIXME: Implement Element::setPointerCapture()");
+    return document().set_pointer_capture(pointer_id, *this);
 }
 
-void Element::release_pointer_capture(WebIDL::Long pointer_id)
+WebIDL::ExceptionOr<void> Element::release_pointer_capture(WebIDL::Long pointer_id)
 {
-    (void)pointer_id;
-    dbgln("FIXME: Implement Element::releasePointerCapture()");
+    return document().release_pointer_capture(pointer_id, *this);
 }
 
 bool Element::has_pointer_capture(WebIDL::Long pointer_id)
 {
-    (void)pointer_id;
-    dbgln("FIXME: Implement Element::hasPointerCapture()");
-    return false;
+    return document().has_pointer_capture(pointer_id, *this);
 }
 
 GC::Ptr<NamedNodeMap> Element::attributes()

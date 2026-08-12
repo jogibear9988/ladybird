@@ -767,6 +767,10 @@ void Document::visit_edges(Cell::Visitor& visitor)
     visitor.visit(m_popover_pointerdown_target);
     visitor.visit(m_open_dialogs_list);
     visitor.visit(m_dialog_pointerdown_target);
+    for (auto& state : m_pointer_capture_states) {
+        visitor.visit(state.value.pending_target_override);
+        visitor.visit(state.value.target_override);
+    }
     visitor.visit(m_console_client);
     visitor.visit(m_cursor_blink_timer);
     visitor.visit(m_previously_repainted_cursor_position);
@@ -8252,6 +8256,103 @@ HTML::HTMLParser::AllowDeclarativeShadowRoots Document::allow_declarative_shadow
 bool Document::is_render_blocking_element(GC::Ref<Element> element) const
 {
     return m_render_blocking_elements.contains(element);
+}
+
+void Document::set_pointer_as_active(WebIDL::Long pointer_id)
+{
+    m_pointer_capture_states.ensure(pointer_id).is_active = true;
+}
+
+void Document::set_pointer_as_inactive(WebIDL::Long pointer_id)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end())
+        return;
+
+    state->value.is_active = false;
+    if (!state->value.pending_target_override && !state->value.target_override)
+        m_pointer_capture_states.remove(state);
+}
+
+// https://w3c.github.io/pointerevents/#dom-element-setpointercapture
+WebIDL::ExceptionOr<void> Document::set_pointer_capture(WebIDL::Long pointer_id, Element& element)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.is_active)
+        return WebIDL::NotFoundError::create("Cannot capture an inactive pointer"_utf16);
+
+    if (!element.is_connected())
+        return WebIDL::InvalidStateError::create("Cannot capture a pointer for a disconnected element"_utf16);
+
+    state->value.pending_target_override = element;
+    return {};
+}
+
+// https://w3c.github.io/pointerevents/#dom-element-releasepointercapture
+WebIDL::ExceptionOr<void> Document::release_pointer_capture(WebIDL::Long pointer_id, Element& element)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.is_active)
+        return WebIDL::NotFoundError::create("Cannot release capture for an inactive pointer"_utf16);
+
+    if (!has_pointer_capture(pointer_id, element))
+        return {};
+
+    state->value.pending_target_override = nullptr;
+    return {};
+}
+
+// https://w3c.github.io/pointerevents/#dom-element-haspointercapture
+bool Document::has_pointer_capture(WebIDL::Long pointer_id, Element const& element) const
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.is_active)
+        return false;
+
+    return state->value.pending_target_override.ptr() == &element || state->value.target_override.ptr() == &element;
+}
+
+GC::Ptr<Element> Document::pointer_capture_target_override(WebIDL::Long pointer_id) const
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.target_override || !state->value.target_override->is_connected())
+        return nullptr;
+
+    return state->value.target_override;
+}
+
+// https://w3c.github.io/pointerevents/#process-pending-pointer-capture
+void Document::process_pending_pointer_capture(WebIDL::Long pointer_id, PointerCaptureEventDispatcher const& dispatch_pointer_capture_event)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end())
+        return;
+
+    auto previous_target_override = state->value.target_override;
+    auto pending_target_override = state->value.pending_target_override;
+    if (pending_target_override && !pending_target_override->is_connected())
+        pending_target_override = nullptr;
+
+    if (previous_target_override == pending_target_override)
+        return;
+
+    if (previous_target_override && previous_target_override->is_connected())
+        dispatch_pointer_capture_event(*previous_target_override, UIEvents::EventNames::lostpointercapture);
+    if (pending_target_override)
+        dispatch_pointer_capture_event(*pending_target_override, UIEvents::EventNames::gotpointercapture);
+
+    state->value.target_override = pending_target_override;
+}
+
+// https://w3c.github.io/pointerevents/#implicit-release-of-pointer-capture
+void Document::implicitly_release_pointer_capture(WebIDL::Long pointer_id, PointerCaptureEventDispatcher const& dispatch_pointer_capture_event)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end())
+        return;
+
+    state->value.pending_target_override = nullptr;
+    process_pending_pointer_capture(pointer_id, dispatch_pointer_capture_event);
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#render-blocked
