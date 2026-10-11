@@ -70,6 +70,8 @@ public:
     WebIDL::ExceptionOr<Utf16String> get_html(HTMLSerializationOptions const&) const;
 
     GC::Ptr<Element> active_element();
+    Element const* element_from_point(double x, double y);
+    GC::RootVector<GC::Ref<Element>> elements_from_point(double x, double y);
 
     CSS::StyleSheetList& style_sheets();
     CSS::StyleSheetList const& style_sheets() const;
@@ -140,7 +142,6 @@ private:
     ShadowRoot(Document&, Element& host, ShadowRootMode);
 
     // ^Node
-    virtual Utf16FlyString node_name() const override { return "#shadow-root"_utf16_fly_string; }
     virtual bool is_shadow_root() const final { return true; }
     virtual void adopted_from(Document&) override;
 

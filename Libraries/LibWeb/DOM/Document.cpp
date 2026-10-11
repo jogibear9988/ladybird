@@ -952,6 +952,10 @@ void Document::visit_edges(Cell::Visitor& visitor)
     visitor.visit(m_popover_pointerdown_target);
     visitor.visit(m_open_dialogs_list);
     visitor.visit(m_dialog_pointerdown_target);
+    for (auto& state : m_pointer_capture_states) {
+        visitor.visit(state.value.pending_target_override);
+        visitor.visit(state.value.target_override);
+    }
     visitor.visit(m_console_client);
     visitor.visit(m_previously_repainted_cursor_position);
     visitor.visit(m_editing_host_manager);
@@ -8854,97 +8858,16 @@ WebIDL::ExceptionOr<void> Document::set_design_mode(Utf16View design_mode)
     return {};
 }
 
-static Element* retarget_from_ua_internal_shadow_root(Element& element)
-{
-    auto* result = &element;
-    while (auto shadow_root = result->containing_shadow_root()) {
-        if (!shadow_root->is_user_agent_internal())
-            break;
-        result = shadow_root->host();
-    }
-    return result;
-}
-
 // https://drafts.csswg.org/cssom-view/#dom-document-elementfrompoint
 Element const* Document::element_from_point(double x, double y)
 {
-    Layout::ForcedReadScope read { *this };
-    // 1. If either argument is negative, x is greater than the viewport width excluding the size of a rendered scroll
-    //    bar (if any), or y is greater than the viewport height excluding the size of a rendered scroll bar (if any), or
-    //    there is no viewport associated with the document, return null and terminate these steps.
-    auto viewport_rect = this->viewport_rect();
-    CSSPixelPoint position { x, y };
-    // FIXME: This should account for the size of the scroll bar.
-    if (x < 0 || y < 0 || position.x() > viewport_rect.width() || position.y() > viewport_rect.height())
-        return nullptr;
-
-    // Ensure the layout tree exists prior to hit testing.
-    update_layout(UpdateLayoutReason::DocumentElementFromPoint);
-
-    // 2. If there is a box in the viewport that would be a target for hit testing at coordinates x,y, when applying the transforms
-    //    that apply to the descendants of the viewport, return the associated element and terminate these steps.
-    GC::Ptr<Element> hit_element;
-    (void)hit_test_all(read, position, [&](Painting::HitTestResult result) {
-        if (auto* element = as_if<Element>(result.dom_node())) {
-            hit_element = element;
-            return TraversalDecision::Break;
-        }
-        return TraversalDecision::Continue;
-    });
-    if (hit_element) {
-        // AD-HOC: If element is inside a UA internal shadow root, retarget to the host.
-        return retarget_from_ua_internal_shadow_root(*hit_element);
-    }
-
-    // 3. If the document has a root element, return the root element and terminate these steps.
-    if (auto const* root_element = document_element())
-        return root_element;
-
-    // 4. Return null.
-    return nullptr;
+    return calculate_element_from_point(*this, x, y);
 }
 
 // https://drafts.csswg.org/cssom-view/#dom-document-elementsfrompoint
 GC::RootVector<GC::Ref<Element>> Document::elements_from_point(double x, double y)
 {
-    Layout::ForcedReadScope read { *this };
-    // 1. Let sequence be a new empty sequence.
-    GC::RootVector<GC::Ref<Element>> sequence;
-
-    // 2. If either argument is negative, x is greater than the viewport width excluding the size of a rendered scroll bar (if any),
-    //    or y is greater than the viewport height excluding the size of a rendered scroll bar (if any),
-    //    or there is no viewport associated with the document, return sequence and terminate these steps.
-    auto viewport_rect = this->viewport_rect();
-    CSSPixelPoint position { x, y };
-    // FIXME: This should account for the size of the scroll bar.
-    if (x < 0 || y < 0 || position.x() > viewport_rect.width() || position.y() > viewport_rect.height())
-        return sequence;
-
-    // Ensure the layout tree exists prior to hit testing.
-    update_layout(UpdateLayoutReason::DocumentElementsFromPoint);
-
-    // 3. For each box in the viewport, in paint order, starting with the topmost box, that would be a target for
-    //    hit testing at coordinates x,y even if nothing would be overlapping it, when applying the transforms that
-    //    apply to the descendants of the viewport, append the associated element to sequence.
-    (void)hit_test_all(read, position, [&](Painting::HitTestResult result) {
-        if (auto* element = as_if<Element>(result.dom_node())) {
-            // AD-HOC: If element is inside a UA internal shadow root, retarget to the host.
-            element = retarget_from_ua_internal_shadow_root(*element);
-            // AD-HOC: Avoid adding duplicates when multiple boxes resolve to the same element, or when multiple
-            // internal elements retarget to the same host.
-            if (!sequence.contains_slow(GC::Ref { *element }))
-                sequence.append(*element);
-        }
-        return TraversalDecision::Continue;
-    });
-
-    // 4. If the document has a root element, and the last item in sequence is not the root element,
-    //    append the root element to sequence.
-    if (auto* root_element = document_element(); root_element && (sequence.is_empty() || (sequence.last().ptr() != root_element)))
-        sequence.append(*root_element);
-
-    // 5. Return sequence.
-    return sequence;
+    return calculate_elements_from_point(*this, x, y);
 }
 
 static bool shadow_root_is_allowed_for_caret_position(ShadowRoot const& shadow_root, Document::CaretPositionFromPointOptions const& options)
@@ -9646,6 +9569,103 @@ HTML::HTMLParser::AllowDeclarativeShadowRoots Document::allow_declarative_shadow
 bool Document::is_render_blocking_element(GC::Ref<Element> element) const
 {
     return m_render_blocking_elements.contains(element);
+}
+
+void Document::set_pointer_as_active(WebIDL::Long pointer_id)
+{
+    m_pointer_capture_states.ensure(pointer_id).is_active = true;
+}
+
+void Document::set_pointer_as_inactive(WebIDL::Long pointer_id)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end())
+        return;
+
+    state->value.is_active = false;
+    if (!state->value.pending_target_override && !state->value.target_override)
+        m_pointer_capture_states.remove(state);
+}
+
+// https://w3c.github.io/pointerevents/#dom-element-setpointercapture
+WebIDL::ExceptionOr<void> Document::set_pointer_capture(WebIDL::Long pointer_id, Element& element)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.is_active)
+        return WebIDL::NotFoundError::create("Cannot capture an inactive pointer"_utf16);
+
+    if (!element.is_connected())
+        return WebIDL::InvalidStateError::create("Cannot capture a pointer for a disconnected element"_utf16);
+
+    state->value.pending_target_override = element;
+    return {};
+}
+
+// https://w3c.github.io/pointerevents/#dom-element-releasepointercapture
+WebIDL::ExceptionOr<void> Document::release_pointer_capture(WebIDL::Long pointer_id, Element& element)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.is_active)
+        return WebIDL::NotFoundError::create("Cannot release capture for an inactive pointer"_utf16);
+
+    if (!has_pointer_capture(pointer_id, element))
+        return {};
+
+    state->value.pending_target_override = nullptr;
+    return {};
+}
+
+// https://w3c.github.io/pointerevents/#dom-element-haspointercapture
+bool Document::has_pointer_capture(WebIDL::Long pointer_id, Element const& element) const
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.is_active)
+        return false;
+
+    return state->value.pending_target_override.ptr() == &element || state->value.target_override.ptr() == &element;
+}
+
+GC::Ptr<Element> Document::pointer_capture_target_override(WebIDL::Long pointer_id) const
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end() || !state->value.target_override || !state->value.target_override->is_connected())
+        return nullptr;
+
+    return state->value.target_override;
+}
+
+// https://w3c.github.io/pointerevents/#process-pending-pointer-capture
+void Document::process_pending_pointer_capture(WebIDL::Long pointer_id, PointerCaptureEventDispatcher const& dispatch_pointer_capture_event)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end())
+        return;
+
+    auto previous_target_override = state->value.target_override;
+    auto pending_target_override = state->value.pending_target_override;
+    if (pending_target_override && !pending_target_override->is_connected())
+        pending_target_override = nullptr;
+
+    if (previous_target_override == pending_target_override)
+        return;
+
+    if (previous_target_override && previous_target_override->is_connected())
+        dispatch_pointer_capture_event(*previous_target_override, UIEvents::EventNames::lostpointercapture);
+    if (pending_target_override)
+        dispatch_pointer_capture_event(*pending_target_override, UIEvents::EventNames::gotpointercapture);
+
+    state->value.target_override = pending_target_override;
+}
+
+// https://w3c.github.io/pointerevents/#implicit-release-of-pointer-capture
+void Document::implicitly_release_pointer_capture(WebIDL::Long pointer_id, PointerCaptureEventDispatcher const& dispatch_pointer_capture_event)
+{
+    auto state = m_pointer_capture_states.find(pointer_id);
+    if (state == m_pointer_capture_states.end())
+        return;
+
+    state->value.pending_target_override = nullptr;
+    process_pending_pointer_capture(pointer_id, dispatch_pointer_capture_event);
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#render-blocked

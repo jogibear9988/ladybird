@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<script src="../include.js"></script>
+<svg width="200" height="100">
+    <rect id="rect" x="10" y="10" width="50" height="50"></rect>
+    <path id="evenodd" fill-rule="evenodd" d="M 80 10 H 140 V 70 H 80 Z M 95 25 H 125 V 55 H 95 Z"></path>
+</svg>
+<script>
+    test(() => {
+        const rect = document.getElementById("rect");
+        const evenodd = document.getElementById("evenodd");
+
+        println(`isPointInFill exists: ${typeof rect.isPointInFill}`);
+        println(`rect contains center: ${rect.isPointInFill({ x: 20, y: 20 })}`);
+        println(`rect excludes outside point: ${rect.isPointInFill({ x: 80, y: 20 })}`);
+        println(`rect default point is outside: ${rect.isPointInFill()}`);
+        println(`evenodd contains outer area: ${evenodd.isPointInFill({ x: 85, y: 15 })}`);
+        println(`evenodd excludes inner hole: ${evenodd.isPointInFill({ x: 100, y: 30 })}`);
+    });
+</script>
